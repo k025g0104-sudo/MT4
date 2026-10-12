@@ -8,28 +8,6 @@ const char kWindowTitle[] = "学籍番号";
 
 struct Matrix4x4
 {
-	float m[4][4];
-};
-
-struct  Spherical
-{
-	float radius;
-
-	float theta;
-
-	float phi;
-
-};
-
-Spherical s
-{
-	6.0f,
-	0.0f,
-	-std::numbers::pi_v<float> / 2.0f
-};
-
-struct Vector3
-{
 	float x;
 	float y;
 	float z;
@@ -127,7 +105,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		Vector3 target = { 0.0f, 0.0f, 0.0f };
 		Vector3 eye = target + offset;
 		Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
-		Vector3 forward = Normalize(target, eye);
+		Vector3 forward = Normalize(target, camera);
 		Vector3 right = Normalize(Cross(worldUp, forward));
 		Vector3 up = Cross(forward, right);
 
@@ -155,8 +133,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::DragFloat("radius", &s.radius, 0.01f);
 		ImGui::DragFloat("theta (rad)", &s.theta, 0.01f);
 		ImGui::DragFloat("phi (rad)", &s.phi, 0.01f);
-
-		ImGui::Text("pos: %.3f, %.3f, %.3f", eye.x, eye.y, eye.z);
+		ImGui::SliderFloat("speed", &speed, 0.0f, 60.0f);
+		ImGui::Text("deltaTime: %.4f", deltaTime);
 
 		ImGui::Text("cameraMatrix");
 		for (int row = 0; row < 4; ++row)
@@ -167,7 +145,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		}
 
 		ImGui::End();
-
 
 		///
 		/// ↑描画処理ここまで
