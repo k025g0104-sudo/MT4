@@ -4,21 +4,91 @@
 #include <cmath>
 #include <algorithm>
 #include <imgui.h>
+#include <chrono>
 const char kWindowTitle[] = "学籍番号";
 
 struct Matrix4x4
+{
+	float m[4][4];
+};
+
+struct  Spherical
+{
+	float radius;
+
+	float theta;
+
+	float phi;
+
+};
+
+Spherical s
+{
+	6.0f,
+	0.0f,
+	-std::numbers::pi_v<float> / 2.0f
+};
+
+struct Vector3
 {
 	float x;
 	float y;
 	float z;
 };
 
+struct Vector2
+{
+	float x;
+	float y;
+};
+
+Vector3 camera =
+{
+	0.0f, 0.0f, 6.0f
+};
+
+float t = 0.1f;
+float speed = 6.0f;
+
+Vector3 operator-(const Vector3& a, const Vector3& b)
+{
+	return { a.x - b.x, a.y - b.y, a.z - b.z };
+}
+
 Vector3 operator+(const Vector3& a, const Vector3& b)
 {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
 
-Vector3 ToCartesian(const Spherical& sph )
+Vector3& operator+=(Vector3& a, const Vector3& b)
+{
+	a.x += b.x; a.y += b.y; a.z += b.z;
+	return a;
+}
+
+Vector3 operator*(float k, const Vector3& v)
+{
+	return { k * v.x, k * v.y, k * v.z };
+}
+
+Vector2 operator-(const Vector2& a, const Vector2& b)
+{
+	return { a.x - b.x, a.y - b.y };
+}
+
+Vector2 operator*(float k, const Vector2& v)
+{
+	return { k * v.x, k * v.y };
+}
+
+Vector2& operator+=(Vector2& a, const Vector2& b)
+{
+	a.x += b.x;
+	a.y += b.y;
+	return a;
+}
+
+Vector3 ToCartesian(const Spherical& sph)
 {
 	float rho = sph.radius * std::cos(sph.theta);
 	return
@@ -60,7 +130,7 @@ Vector3 Normalize(const Vector3& v)
 Vector3 Normalize(const Vector3& to, const Vector3& from)
 {
 	Vector3 v = { to.x - from.x, to.y - from.y, to.z - from.z };
-	return Normalize(v);  
+	return Normalize(v);
 }
 
 Vector3 Cross(const Vector3& a, const Vector3& b)
@@ -79,13 +149,26 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ライブラリの初期化
 	Novice::Initialize(kWindowTitle, 1280, 720);
 
+	auto prevTime = std::chrono::steady_clock::now();
+
 	// キー入力結果を受け取る箱
 	char keys[256] = { 0 };
 	char preKeys[256] = { 0 };
 
+	Vector2 posA = { 0.0f, 0.0f };
+	const int radiusA = 12;
+	Vector2 posB = { 640.0f, 360.0f };
+	const int radiusB = 20;
+
+	const float fixedDeltaTime = 1.0f / 60.0f;
+
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0)
 	{
+		auto now = std::chrono::steady_clock::now();
+		std::chrono::duration<float> elapsed = now - prevTime;
+		float deltaTime = elapsed.count();
+
 		// フレームの開始
 		Novice::BeginFrame();
 
@@ -103,7 +186,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		Vector3 offset = ToCartesian(s);
 		Vector3 target = { 0.0f, 0.0f, 0.0f };
-		Vector3 eye = target + offset;
+		Vector3 goal = target + offset;
+		t = 1.0f - std::exp(-speed * deltaTime);
+
+		camera += t * (goal - camera);
+
+		Vector3 diff = goal - camera;
+		float distance = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+		if (distance < 0.001f)
+		{
+			camera = goal;
+		}
+
 		Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
 		Vector3 forward = Normalize(target, camera);
 		Vector3 right = Normalize(Cross(worldUp, forward));
@@ -115,10 +209,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 				{ right.x,   right.y,   right.z,   0.0f },
 				{ up.x,      up.y,      up.z,      0.0f },
 				{ forward.x, forward.y, forward.z, 0.0f },
-				{ eye.x,     eye.y,     eye.z,     1.0f }
+				{ camera.x,  camera.y,  camera.z,  1.0f }
 			}
 		};
 
+		
+		int mouseX = 0;
+		int mouseY = 0;
+		Novice::GetMousePosition(&mouseX, &mouseY);
+		posA = { static_cast<float>(mouseX), static_cast<float>(mouseY) };
+
+		posB += (speed * fixedDeltaTime) * (posA - posB);
 
 		///
 		/// ↑更新処理ここまで
@@ -128,6 +229,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
+		Novice::DrawLine(static_cast<int>(posA.x), static_cast<int>(posA.y),static_cast<int>(posB.x), static_cast<int>(posB.y),WHITE);
+		Novice::DrawEllipse(static_cast<int>(posB.x), static_cast<int>(posB.y),radiusB, radiusB, 0.0f, GREEN, kFillModeSolid);
+		Novice::DrawEllipse(static_cast<int>(posA.x), static_cast<int>(posA.y),radiusA, radiusA, 0.0f, RED, kFillModeSolid);
+
 		ImGui::Begin("Camera");
 
 		ImGui::DragFloat("radius", &s.radius, 0.01f);
@@ -135,6 +240,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		ImGui::DragFloat("phi (rad)", &s.phi, 0.01f);
 		ImGui::SliderFloat("speed", &speed, 0.0f, 60.0f);
 		ImGui::Text("deltaTime: %.4f", deltaTime);
+		ImGui::Text("goal: %.3f, %.3f, %.3f", goal.x, goal.y, goal.z);
+		ImGui::Text("pos: %.3f, %.3f, %.3f", camera.x, camera.y, camera.z);
 
 		ImGui::Text("cameraMatrix");
 		for (int row = 0; row < 4; ++row)
@@ -144,7 +251,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 				cameraMatrix.m[row][2], cameraMatrix.m[row][3]);
 		}
 
+		ImGui::Text("circle A: %.1f, %.1f", posA.x, posA.y);
+		ImGui::Text("circle B: %.1f, %.1f", posB.x, posB.y);
+
 		ImGui::End();
+
 
 		///
 		/// ↑描画処理ここまで
@@ -152,6 +263,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		// フレームの終了
 		Novice::EndFrame();
+
+		prevTime = now;
 
 		// ESCキーが押されたらループを抜ける
 		if (preKeys[DIK_ESCAPE] == 0 && keys[DIK_ESCAPE] != 0) {
