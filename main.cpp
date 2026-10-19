@@ -143,6 +143,81 @@ Vector3 Cross(const Vector3& a, const Vector3& b)
 	};
 }
 
+struct Quaternion
+{
+	float x;
+	float y;
+	float z;
+	float w;
+
+};
+
+Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs);
+
+Quaternion IdentityQuaternion();
+
+Quaternion Conjugate(const Quaternion& quaternion);
+
+float Norm(const Quaternion& quaternion);
+
+Quaternion Normalize(const Quaternion& quaternion);
+
+Quaternion Inverse(const Quaternion& quaternion);
+
+
+Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs)
+{
+	return
+	{
+		lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y,
+		lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x,
+		lhs.w * rhs.z + lhs.x * rhs.y - lhs.y * rhs.x + lhs.z * rhs.w,
+		lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z
+	};
+}
+
+Quaternion IdentityQuaternion()
+{
+	return { 0.0f, 0.0f, 0.0f, 1.0f };
+}
+
+Quaternion Conjugate(const Quaternion& quaternion)
+{
+	return { -quaternion.x, -quaternion.y, -quaternion.z, quaternion.w };
+}
+
+float Norm(const Quaternion& quaternion)
+{
+	return std::sqrt(
+		quaternion.x * quaternion.x +
+		quaternion.y * quaternion.y +
+		quaternion.z * quaternion.z +
+		quaternion.w * quaternion.w);
+}
+
+Quaternion Normalize(const Quaternion& quaternion)
+{
+	float norm = Norm(quaternion);
+	if (norm == 0.0f)
+	{
+		return IdentityQuaternion();
+	}
+	return { quaternion.x / norm, quaternion.y / norm, quaternion.z / norm, quaternion.w / norm };
+}
+
+Quaternion Inverse(const Quaternion& quaternion)
+{
+	float norm = Norm(quaternion);
+	float normSq = norm * norm;
+	if (normSq == 0.0f)
+	{
+		return IdentityQuaternion();
+	}
+	Quaternion conj = Conjugate(quaternion);
+	return { conj.x / normSq, conj.y / normSq, conj.z / normSq, conj.w / normSq };
+}
+
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -221,6 +296,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		posB += (speed * fixedDeltaTime) * (posA - posB);
 
+		Quaternion q1 = { 2.0f, 3.0f, 4.0f, 1.0f };
+		Quaternion q2 = { 1.0f, 3.0f, 5.0f, 2.0f };
+		Quaternion identity = IdentityQuaternion();
+		Quaternion conj = Conjugate(q1);
+		Quaternion inv = Inverse(q1);
+		Quaternion normal = Normalize(q1);
+		Quaternion mul1 = Multiply(q1, q2);
+		Quaternion mul2 = Multiply(q2, q1);
+		float norm = Norm(q1);
+
 		///
 		/// ↑更新処理ここまで
 		///
@@ -256,6 +341,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		ImGui::End();
 
+		ImGui::Begin("Quaternion");
+		ImGui::Text("%.2f %.2f %.2f %.2f : Identity", identity.x, identity.y, identity.z, identity.w);
+		ImGui::Text("%.2f %.2f %.2f %.2f : Conjugate", conj.x, conj.y, conj.z, conj.w);
+		ImGui::Text("%.2f %.2f %.2f %.2f : Inverse", inv.x, inv.y, inv.z, inv.w);
+		ImGui::Text("%.2f %.2f %.2f %.2f : Normalize", normal.x, normal.y, normal.z, normal.w);
+		ImGui::Text("%.2f %.2f %.2f %.2f : Multiply(q1, q2)", mul1.x, mul1.y, mul1.z, mul1.w);
+		ImGui::Text("%.2f %.2f %.2f %.2f : Multiply(q2, q1)", mul2.x, mul2.y, mul2.z, mul2.w);
+		ImGui::Text("%.2f : Norm", norm);
+		ImGui::End();
 
 		///
 		/// ↑描画処理ここまで
